@@ -1,6 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from geopy.geocoders import Nominatim
+from geopy.location import Location
+from typing import cast, Optional
 import uvicorn
+import asyncio
+from typing import Optional
 from groq import Groq
 from dotenv import load_dotenv
 import os
@@ -51,44 +57,38 @@ completion = client.chat.completions.create(
 for chunk in completion:
     print(chunk.choices[0].delta.content or "", end="")
 
+app = FastAPI()
 
+geolocator = Nominatim(user_agent="calhacks2025-app")
 
+class LocationInput(BaseModel):
+    lat: float
+    lon: float
 
-# Create FastAPI instance
-app = FastAPI(
-    title="CalHacks 2025 API",
-    description="A FastAPI application for CalHacks 2025",
-    version="1.0.0"
-)
-
-# Add CORS middleware to allow frontend to communicate with backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Root endpoint
-@app.get("/")
-async def root():
-    return {"message": "Welcome to CalHacks 2025 API!"}
+@app.post("/location") 
+async def get_location(data: LocationInput):
+    raw_location = await asyncio.to_thread(
+        geolocator.reverse, (data.lat, data.lon), exactly_one=True
+    )
+    location = cast(Optional[Location], raw_location)
 
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "message": "API is running"}
+    if location and "address" in location.raw:
+        address = location.raw["address"]
+        city = address.get("city") or address.get("town") or address.get("village")
+        state = address.get("state")
 
-# Example endpoint with path parameter
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello, {name}!"}
+        print(f"Detected location - City: {city}, State: {state}")  # <-- Print here
 
-# Example POST endpoint
-@app.post("/items")
-async def create_item(item: dict):
-    return {"item": item, "message": "Item created successfully"}
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+        return {
+            "city": city,
+            "state": state
+        }
+    return {"error": "Unable to determine city/state"}
