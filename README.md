@@ -60,7 +60,12 @@ pip install -r ../requirements.txt
 ```
 uvicorn main:app --reload
 ```
-
+### 5. Api Key Setup
+```
+We will be using .env in the backend folder to access the api keys.
+1. Groq API KEY
+  
+```
 > The API will be available at [http://localhost:8000](http://localhost:8000)
 
 ---
