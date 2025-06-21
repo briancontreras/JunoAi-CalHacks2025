@@ -28,7 +28,7 @@ const LocationDetector: React.FC<LocationDetectorProps> = ({ onLocationChange, c
 
   const detectLocation = async () => {
     setIsDetecting(true);
-    
+  
     try {
       if ('geolocation' in navigator) {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -37,31 +37,49 @@ const LocationDetector: React.FC<LocationDetectorProps> = ({ onLocationChange, c
             enableHighAccuracy: true
           });
         });
-
-        // Simulate geocoding API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // For demo purposes, randomly select a state
-        const randomState = states[Math.floor(Math.random() * states.length)];
-        onLocationChange(randomState);
-        
+  
+        const { latitude, longitude } = position.coords;
+  
+        // Call your backend /location endpoint with coordinates
+        const response = await fetch("http://localhost:8000/location", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat: latitude, lon: longitude }),
+        });
+  
+        if (!response.ok) throw new Error("Failed to get location from server");
+  
+        const data = await response.json();
+  
+        if (data.error) {
+          throw new Error(data.error);
+        }
+  
+        // Use state or fallback to city if you want
+        const detectedLocation = data.state || data.city || "Unknown";
+  
+        onLocationChange(detectedLocation);
+  
         toast({
           title: "Location Detected",
-          description: `Your location has been set to ${randomState}`,
+          description: `Your location has been set to ${detectedLocation}`,
         });
       } else {
         throw new Error('Geolocation not supported');
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
       toast({
         title: "Location Detection Failed",
-        description: "Please select your location manually",
+        description: error.message || "Please select your location manually",
         variant: "destructive"
       });
     } finally {
       setIsDetecting(false);
     }
   };
+  
 
   const handleStateSelect = (state: string) => {
     onLocationChange(state);
