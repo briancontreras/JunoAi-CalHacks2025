@@ -7,6 +7,9 @@ __pycache__/
 venv/
 env/
 
+# Environment variables
+.env
+
 # VS Code settings (optional)
 .vscode/
 
@@ -14,6 +17,9 @@ env/
 .DS_Store
 Thumbs.db
 
+
+#groq testing
+test.py
 # Python egg info
 *.egg-info/
 dist/
