@@ -13,12 +13,12 @@ import os
 from fastapi import UploadFile, File, HTTPException
 import httpx
 
+
 ##API KEYS
 load_dotenv()
 
 
 
-client = Groq(api_key=api_key)
 api_key = os.getenv("api_key")
 client = Groq(api_key=api_key)
 
@@ -131,8 +131,6 @@ def legal_reasoning(user_input, location, city):
         reasoning_format="raw"  # Optional: if your implementation supports it
     )
 
-    for chunk in completion:
-        print(chunk.choices[0].delta.content or "", end="")
 
 class LegalRequest(BaseModel):
     question: str
@@ -179,4 +177,34 @@ Try to keep your response to to 500 words.
     )
     content = generation_completion.choices[0].message.content
     humanized_response = content.strip() if content else ""
-    return {"response": humanized_response}
+
+    # Step 3: Use Groq to summarize while preserving crucial information
+    summary_prompt = f"""
+You are a legal summarization expert. Please summarize the following legal response while ensuring ALL crucial legal information, rights, and actionable advice are preserved:
+
+{humanized_response}
+
+Your summary should:
+1. Keep all specific legal rights mentioned
+2. Preserve all actionable advice and recommendations
+3. Maintain any legal citations or references
+4. Keep the conversational, empathetic tone
+5. Be more concise (aim for 100-200 words) but comprehensive
+6. Highlight the most important points first
+7. Ensure no critical legal information is lost
+
+Focus on what the person needs to know and what they should do next.
+"""
+
+    summary_completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": summary_prompt}],
+        temperature=0.5,  # Lower temperature for more consistent summarization
+        max_tokens=800
+    )
+    
+    # Extract the summarized response from Groq
+    summary_content = summary_completion.choices[0].message.content
+    summarized_response = summary_content.strip() if summary_content else humanized_response
+
+    return {"response": summarized_response}
