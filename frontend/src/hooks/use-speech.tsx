@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 // Helper function to clean text for speech
 const cleanTextForSpeech = (text: string): string => {
@@ -22,9 +22,31 @@ const cleanTextForSpeech = (text: string): string => {
 
 export const useSpeech = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const stopCurrentAudio = () => {
+    // Stop any currently playing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
+    
+    // Stop any currently speaking utterance
+    if (currentUtteranceRef.current) {
+      window.speechSynthesis.cancel();
+      currentUtteranceRef.current = null;
+    }
+    
+    setIsSpeaking(false);
+  };
 
   const speakWithGoogle = async (text: string) => {
     try {
+      // Stop any currently playing audio first
+      stopCurrentAudio();
+      
       setIsSpeaking(true);
       
       // Clean the text before sending to speech API
@@ -49,15 +71,18 @@ export const useSpeech = () => {
       
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
+      currentAudioRef.current = audio;
       
       audio.onended = () => {
         console.log('Audio finished playing');
         URL.revokeObjectURL(audioUrl);
+        currentAudioRef.current = null;
         setIsSpeaking(false);
       };
       audio.onerror = (e) => {
         console.error('Audio error:', e);
         URL.revokeObjectURL(audioUrl);
+        currentAudioRef.current = null;
         setIsSpeaking(false);
       };
       
@@ -70,12 +95,19 @@ export const useSpeech = () => {
       console.log('Falling back to browser speech synthesis');
       const cleanText = cleanTextForSpeech(text);
       const utterance = new SpeechSynthesisUtterance(cleanText);
+      currentUtteranceRef.current = utterance;
       utterance.rate = 0.9;
       utterance.pitch = 1;
       utterance.volume = 0.8;
       
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
+      utterance.onend = () => {
+        currentUtteranceRef.current = null;
+        setIsSpeaking(false);
+      };
+      utterance.onerror = () => {
+        currentUtteranceRef.current = null;
+        setIsSpeaking(false);
+      };
       
       window.speechSynthesis.speak(utterance);
     }
@@ -84,6 +116,7 @@ export const useSpeech = () => {
   return {
     speakWithGoogle,
     isSpeaking,
-    cleanTextForSpeech
+    cleanTextForSpeech,
+    stopCurrentAudio
   };
 };
