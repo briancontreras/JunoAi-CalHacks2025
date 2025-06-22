@@ -94,4 +94,4 @@ To run your api credentials you will have to input them into the .env folder in 
 - Brian Contreras
 - Santiago Del Rio Obando
 - Kenia Sanchez
-- Ozzy Valdiviezo
+- Osvaldo Valdiviezo
