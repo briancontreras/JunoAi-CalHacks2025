@@ -16,7 +16,8 @@ import httpx
 ##API KEYS
 load_dotenv()
 
-api_key = os.getenv("GROQ_API_KEY")
+api_key = os.getenv("api_key")
+client = Groq(api_key=api_key)
 
 app = FastAPI()
 
@@ -93,6 +94,7 @@ async def transcribe_audio(request: Request, file: UploadFile = File(...)):
 
 @app.post("/legal_reasoning")
 def legal_reasoning(user_input, location, city):
+    client = Groq(api_key=api_key)
     reasoning_prompt = f"""
     You are a legal reasoning AI.
     Given a user's situation, determine:
@@ -111,7 +113,6 @@ def legal_reasoning(user_input, location, city):
     }}
     """
 
-    client = Groq(api_key=api_key)
     completion = client.chat.completions.create(
         model="deepseek-r1-distill-llama-70b",
         messages=[
