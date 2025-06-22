@@ -11,14 +11,15 @@ from groq import Groq
 from dotenv import load_dotenv
 import os
 from fastapi import UploadFile, File, HTTPException
+from fastapi.responses import Response
 import httpx
-
+import base64
 
 ##API KEYS
 load_dotenv()
 
 
-
+google_api_key = os.getenv("GOOGLE_API_KEY")
 api_key = os.getenv("api_key")
 client = Groq(api_key=api_key)
 
@@ -192,6 +193,8 @@ Your summary should:
 5. Be more concise (aim for 100-200 words) but comprehensive
 6. Highlight the most important points first
 7. Ensure no critical legal information is lost
+8. If numbering is used, refer to the number as steps instead of a list
+9. When you list steps make sure to use the word "step" has a captial 's'
 
 Focus on what the person needs to know and what they should do next.
 """
@@ -208,3 +211,72 @@ Focus on what the person needs to know and what they should do next.
     summarized_response = summary_content.strip() if summary_content else humanized_response
 
     return {"response": summarized_response}
+
+
+class SpeechRequest(BaseModel):
+    text: str
+
+@app.post("/speak")
+async def speak_text(request: SpeechRequest):
+    try:
+        # Get Google API key from environment
+        google_api_key = os.getenv("GOOGLE_API_KEY")
+        if not google_api_key:
+            raise HTTPException(status_code=500, detail="Google API key not configured")
+        
+        # Google Cloud Text-to-Speech API endpoint
+        url = "https://texttospeech.googleapis.com/v1/text:synthesize"
+        
+        # Prepare the request payload for friendly lawyer voice
+        payload = {
+            "input": {
+                "text": request.text
+            },
+            "voice": {
+                "languageCode": "en-US",
+                "name": "en-US-Neural2-F",  # Friendly female neural voice
+                "ssmlGender": "FEMALE"
+            },
+            "audioConfig": {
+                "audioEncoding": "MP3",
+                "speakingRate": 1.25,      # Slightly slower for clarity
+                "pitch": 0,               # Normal pitch
+                "volumeGainDb": 0,        # Normal volume
+                "effectsProfileId": ["headphone-class-device"]  # Optimized for headphones
+            }
+        }
+        
+        # Make request to Google TTS API
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{url}?key={google_api_key}",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+        if response.status_code != 200:
+            error_detail = response.text
+            print(f"Google TTS API error: {error_detail}")
+            raise HTTPException(status_code=500, detail="Google TTS API error")
+            
+        data = response.json()
+        audio_content = data.get("audioContent")
+        
+        if not audio_content:
+            raise HTTPException(status_code=500, detail="No audio content received")
+        
+        # Decode base64 audio and return
+        audio_bytes = base64.b64decode(audio_content)
+        
+        return Response(
+            content=audio_bytes,
+            media_type="audio/mpeg",
+            headers={"Content-Disposition": "attachment; filename=speech.mp3"}
+        )
+        
+    except Exception as e:
+        print(f"TTS Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"TTS service error: {str(e)}")
+    
+    
+    

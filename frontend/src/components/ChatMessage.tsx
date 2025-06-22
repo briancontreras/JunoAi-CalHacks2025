@@ -1,8 +1,8 @@
-
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Volume2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { useSpeech } from '@/hooks/use-speech';
 
 interface Message {
   id: string;
@@ -16,12 +16,11 @@ interface ChatMessageProps {
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+  const { speakWithGoogle, isSpeaking } = useSpeech();
+
   const handleSpeak = () => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(message.text);
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      window.speechSynthesis.speak(utterance);
+    if (!message.isUser) {
+      speakWithGoogle(message.text);
     }
   };
 
@@ -62,9 +61,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 variant="ghost"
                 size="sm"
                 onClick={handleSpeak}
+                disabled={isSpeaking}
                 className="h-8 w-8 p-0 hover:bg-blue-50 touch-manipulation"
               >
-                <Volume2 className="w-3 h-3" />
+                <Volume2 className={`w-3 h-3 ${isSpeaking ? 'animate-pulse' : ''}`} />
               </Button>
             )}
           </div>

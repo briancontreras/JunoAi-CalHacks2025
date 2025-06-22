@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import LocationDetector from "@/components/LocationDetector";
 import ChatMessage from "@/components/ChatMessage";
 import VoiceInput from "@/components/VoiceInput";
+import { useSpeech } from '@/hooks/use-speech';
 
 interface Message {
   id: string;
@@ -35,6 +36,7 @@ const Index = () => {
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(true);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { speakWithGoogle } = useSpeech();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -122,10 +124,7 @@ const Index = () => {
     
       // Optional: Text-to-speech
       if (isSpeechEnabled && 'speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(aiResponse.text);
-        utterance.rate = 0.9;
-        utterance.pitch = 1;
-        window.speechSynthesis.speak(utterance);
+        speakWithGoogle(aiResponse.text);
       }
     
     } catch (error) {
