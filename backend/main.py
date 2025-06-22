@@ -149,7 +149,7 @@ Provide a helpful, accurate, and concise answer based on U.S. federal law and re
         model="deepseek-r1-distill-llama-70b",
         messages=[{"role": "user", "content": reasoning_prompt}],
         temperature=0.3,
-        max_tokens=512
+        max_tokens=1500
     )
     content = reasoning_completion.choices[0].message.content
     reasoning_text = content.strip() if content else ""
@@ -160,14 +160,18 @@ You are a friendly legal assistant. Here is the factual legal explanation:
 
 {reasoning_text}
 
-Please rewrite the above explanation in a clear, conversational, empathetic tone, easy for any non-expert to understand. Keep it concise but warm.
+Please rewrite the above explanation in a clear, conversational, empathetic tone, easy for any non-expert to understand. 
+Keep it concise but warm.
+If you provide a legal answer, cite your sources by providing the law code and section number and links to the source.
+Also format your response so it is easy to read and understand.
+Try to keep your response to to 500 words.
 """
 
     generation_completion = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": generation_prompt}],
         temperature=0.7,
-        max_tokens=512
+        max_tokens=1500
     )
     content = generation_completion.choices[0].message.content
     humanized_response = content.strip() if content else ""
