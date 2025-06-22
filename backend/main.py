@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from geopy.geocoders import Nominatim
@@ -10,11 +10,13 @@ from typing import Optional
 from groq import Groq
 from dotenv import load_dotenv
 import os
+from fastapi import UploadFile, File, HTTPException
+import httpx
 
 load_dotenv()
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
+api_key = os.getenv("GROQ_API_KEY")
+print(f"API key loaded? {api_key is not None and api_key != ''}")
 
 
 user_input = "Hello I am currently in my vehicle and I got pulled over by the police on the freeway. The officer is requesting to search my car " + \
@@ -38,7 +40,8 @@ Respond in JSON format:
 }}
 """
 
-client = Groq(api_key=GROQ_API_KEY)
+client = Groq(api_key=api_key)
+
 completion = client.chat.completions.create(
     model="deepseek-r1-distill-llama-70b",
     messages=[
@@ -92,3 +95,38 @@ async def get_location(data: LocationInput):
             "state": state
         }
     return {"error": "Unable to determine city/state"}
+
+from fastapi import Request
+
+@app.post("/transcribe")
+async def transcribe_audio(request: Request, file: UploadFile = File(...)):
+    audio_bytes = await file.read()
+
+    headers = {
+        "Authorization": f"Bearer {api_key}"
+    }
+
+    files = {
+        "file": (file.filename, audio_bytes, file.content_type),
+        "model": (None, "whisper-large-v3-turbo")
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                headers=headers,
+                files=files
+            )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        # Log full response content for debugging
+        error_detail = e.response.text
+        print(f"Groq API returned error: {error_detail}")
+        raise HTTPException(status_code=500, detail=f"Groq API error: {error_detail}")
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Unexpected error during transcription")
+
+    data = response.json()
+    return {"transcription": data.get("text")}

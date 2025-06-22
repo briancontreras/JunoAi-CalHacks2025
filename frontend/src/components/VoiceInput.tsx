@@ -1,5 +1,4 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Square } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -11,55 +10,19 @@ interface VoiceInputProps {
 const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
-  const recognition = useRef<any>(null);
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if speech recognition is supported
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (SpeechRecognition) {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       setIsSupported(true);
-      recognition.current = new SpeechRecognition();
-      recognition.current.continuous = false;
-      recognition.current.interimResults = false;
-      recognition.current.lang = 'en-US';
-
-      recognition.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        onTranscript(transcript);
-        setIsRecording(false);
-        
-        toast({
-          title: "Voice Recorded",
-          description: "Your message has been transcribed and sent",
-        });
-      };
-
-      recognition.current.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsRecording(false);
-        
-        toast({
-          title: "Recording Error",
-          description: "Failed to record audio. Please try again or use text input.",
-          variant: "destructive"
-        });
-      };
-
-      recognition.current.onend = () => {
-        setIsRecording(false);
-      };
+    } else {
+      setIsSupported(false);
     }
+  }, []);
 
-    return () => {
-      if (recognition.current) {
-        recognition.current.stop();
-      }
-    };
-  }, [onTranscript, toast]);
-
-  const startRecording = () => {
+  const startRecording = async () => {
     if (!isSupported) {
       toast({
         title: "Not Supported",
@@ -70,15 +33,27 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
     }
 
     try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      audioChunks.current = [];
+
+      mediaRecorder.current.ondataavailable = (event) => {
+        audioChunks.current.push(event.data);
+      };
+
+      mediaRecorder.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' }); // or 'audio/wav' depending on format
+        await sendAudioToBackend(audioBlob);
+      };
+
+      mediaRecorder.current.start();
       setIsRecording(true);
-      recognition.current.start();
-      
+
       toast({
         title: "Recording Started",
         description: "Speak now... Tap stop when finished",
       });
     } catch (error) {
-      setIsRecording(false);
       toast({
         title: "Recording Failed",
         description: "Could not start recording. Please try again.",
@@ -88,12 +63,43 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
   };
 
   const stopRecording = () => {
-    if (recognition.current && isRecording) {
-      recognition.current.stop();
+    if (mediaRecorder.current && isRecording) {
+      mediaRecorder.current.stop();
       setIsRecording(false);
     }
   };
 
+  const sendAudioToBackend = async (audioBlob: Blob) => {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.webm');
+  
+    try {
+      const response = await fetch('http://localhost:8000/transcribe', {  // adjust URL to your backend
+        method: 'POST',
+        body: formData,
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Backend API error: ${response.statusText}`);
+      }
+  
+      const data = await response.json();
+      onTranscript(data.transcription);  // backend returns { transcription: "text" }
+  
+      toast({
+        title: "Voice Recorded",
+        description: "Your message has been transcribed and sent",
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Transcription Error",
+        description: "Failed to transcribe audio with backend service",
+        variant: "destructive",
+      });
+    }
+  };
+  
   if (!isSupported) {
     return (
       <Button variant="outline" disabled className="opacity-50 min-h-[44px] sm:min-h-[40px] touch-manipulation">
