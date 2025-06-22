@@ -1,5 +1,6 @@
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Volume2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
@@ -38,9 +39,16 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
               : 'bg-white border border-blue-200 shadow-sm'
           }`}
         >
-          <p className={`text-sm sm:text-base leading-relaxed ${message.isUser ? 'text-white' : 'text-gray-800'}`}>
-            {message.text}
-          </p>
+          
+          <div className={`prose prose-sm sm:prose-base max-w-none ${
+              message.isUser ? 'text-white' : 'text-gray-800'
+            }`}
+          >
+            <ReactMarkdown>
+              {message.text}
+            </ReactMarkdown>
+          </div>
+
           
           <div className={`flex items-center justify-between mt-2 ${
             message.isUser ? 'text-blue-100' : 'text-gray-500'
