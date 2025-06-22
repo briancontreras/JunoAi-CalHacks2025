@@ -13,6 +13,7 @@ import os
 from fastapi import UploadFile, File, HTTPException
 import httpx
 
+##API KEYS
 load_dotenv()
 
 api_key = os.getenv("GROQ_API_KEY")
@@ -59,6 +60,8 @@ completion = client.chat.completions.create(
 
 for chunk in completion:
     print(chunk.choices[0].delta.content or "", end="")
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 app = FastAPI()
 
@@ -130,3 +133,45 @@ async def transcribe_audio(request: Request, file: UploadFile = File(...)):
 
     data = response.json()
     return {"transcription": data.get("text")}
+
+
+
+@app.get("/legal_reasoning")
+def legal_reasoning(user_input, location, city):
+
+    reasoning_prompt = f"""
+    You are a legal reasoning AI.
+    Given a user's situation, determine:
+    1. What is happening?
+    2. What rights are relevant?
+    3. What should they say or not say?
+    Only use logic based on U.S. law, in the state of {location}, and city of {city}. Be clear and concise.
+
+    User text: "{user_input}"
+    Respond in JSON format:
+    {{
+    "situation_summary": "...",
+    "legal_context": "...",
+    "advice": "...",
+    "confidence": 0-1
+    }}
+    """
+
+    client = Groq(api_key=GROQ_API_KEY)
+    completion = client.chat.completions.create(
+        model="deepseek-r1-distill-llama-70b",
+        messages=[
+            {
+                "role": "user",
+                "content": reasoning_prompt
+            }
+        ],
+        temperature=0.3,  # Lower temp for more factual outputs
+        max_completion_tokens=512,
+        top_p=0.9,
+        stream=True,
+        reasoning_format="raw"  # Optional: if your implementation supports it
+    )
+
+    for chunk in completion:
+        print(chunk.choices[0].delta.content or "", end="")

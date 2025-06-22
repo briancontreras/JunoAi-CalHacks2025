@@ -77,7 +77,8 @@ We will be using .env in the backend folder to access the api keys.
 | POST   | `/`              |                           |
 
 ---
-
+##Api Credentials
+To run your api credentials you will have to input them into the .env folder in order for them to recognized as an enviroment variable. 
 ## Notes
 
 - The `venv/` folder is excluded via `.gitignore` — each dev should create their own.
