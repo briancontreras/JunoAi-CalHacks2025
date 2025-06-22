@@ -12,6 +12,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
   const [isSupported, setIsSupported] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
+  const mediaStream = useRef<MediaStream | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -21,6 +22,15 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
       setIsSupported(false);
     }
   }, []);
+
+  const stopAllTracks = () => {
+    if (mediaStream.current) {
+      mediaStream.current.getTracks().forEach(track => {
+        track.stop();
+      });
+      mediaStream.current = null;
+    }
+  };
 
   const startRecording = async () => {
     if (!isSupported) {
@@ -34,6 +44,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStream.current = stream;
       mediaRecorder.current = new MediaRecorder(stream);
       audioChunks.current = [];
 
@@ -42,8 +53,20 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
       };
 
       mediaRecorder.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' }); // or 'audio/wav' depending on format
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
         await sendAudioToBackend(audioBlob);
+        stopAllTracks();
+      };
+
+      mediaRecorder.current.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+        stopAllTracks();
+        setIsRecording(false);
+        toast({
+          title: "Recording Error",
+          description: "An error occurred during recording",
+          variant: "destructive"
+        });
       };
 
       mediaRecorder.current.start();
@@ -54,6 +77,8 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
         description: "Speak now... Tap stop when finished",
       });
     } catch (error) {
+      console.error('Error starting recording:', error);
+      stopAllTracks();
       toast({
         title: "Recording Failed",
         description: "Could not start recording. Please try again.",
@@ -64,8 +89,14 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
 
   const stopRecording = () => {
     if (mediaRecorder.current && isRecording) {
-      mediaRecorder.current.stop();
-      setIsRecording(false);
+      try {
+        mediaRecorder.current.stop();
+        setIsRecording(false);
+      } catch (error) {
+        console.error('Error stopping recording:', error);
+        stopAllTracks();
+        setIsRecording(false);
+      }
     }
   };
 
@@ -74,7 +105,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
     formData.append('file', audioBlob, 'audio.webm');
   
     try {
-      const response = await fetch('http://localhost:8000/transcribe', {  // adjust URL to your backend
+      const response = await fetch('http://localhost:8000/transcribe', {
         method: 'POST',
         body: formData,
       });
@@ -84,14 +115,14 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
       }
   
       const data = await response.json();
-      onTranscript(data.transcription);  // backend returns { transcription: "text" }
+      onTranscript(data.transcription);
   
       toast({
         title: "Voice Recorded",
         description: "Your message has been transcribed and sent",
       });
     } catch (error) {
-      console.error(error);
+      console.error('Transcription error:', error);
       toast({
         title: "Transcription Error",
         description: "Failed to transcribe audio with backend service",
@@ -99,6 +130,12 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
       });
     }
   };
+
+  useEffect(() => {
+    return () => {
+      stopAllTracks();
+    };
+  }, []);
   
   if (!isSupported) {
     return (
