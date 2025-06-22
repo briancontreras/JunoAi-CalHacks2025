@@ -20,7 +20,7 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hello! I'm your AI legal rights assistant. I can help you understand your rights based on your location. How can I assist you today?",
+      text: "Hello! I'm JUNO, your personal AI legal rights assistant. I can help you understand your rights based on your location. How can I assist you today?",
       isUser: false,
       timestamp: new Date()
     }
@@ -31,7 +31,7 @@ const Index = () => {
     city: string;
     state: string;
   }
-  
+
   const [location, setLocation] = useState<Location>({ city: "", state: "" }); // object state
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(true);
   const { toast } = useToast();
@@ -112,21 +112,21 @@ const Index = () => {
     try {
       //  Await the AI response here!
       const legalText = await getLocationSpecificResponse(text, location);
-    
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         text: `Based on ${location.city}, ${location.state} law, here's what you need to know:\n${legalText}`,
         isUser: false,
         timestamp: new Date()
       };
-    
+
       setMessages(prev => [...prev, aiResponse]);
-    
+
       // Optional: Text-to-speech
       if (isSpeechEnabled && 'speechSynthesis' in window) {
         speakWithGoogle(aiResponse.text);
       }
-    
+
     } catch (error) {
       toast({
         title: "Error",
@@ -145,11 +145,11 @@ const Index = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, location }),
       });
-  
+
       const data = await response.json();
-  
+
       if (!response.ok) throw new Error(data.detail || "Something went wrong");
-  
+
       return data.response;
     } catch (err) {
       console.error(err);
@@ -190,11 +190,11 @@ const Index = () => {
               <span className="text-white font-bold text-sm sm:text-lg">⚖️</span>
             </div>
             <div>
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">AI Rights Assistant</h1>
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">JUNO AI</h1>
               <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Understanding your legal rights, simplified</p>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-1 sm:space-x-2">
             <LocationDetector onLocationChange={setLocation} currentLocation={location} />
             <Button
@@ -242,7 +242,7 @@ const Index = () => {
           <div className="border-t border-blue-200 p-3 sm:p-4 bg-white/50">
             <div className="flex items-end space-x-2 sm:space-x-3">
               <VoiceInput onTranscript={handleSendMessage} />
-              
+
               <div className="flex-1 flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:space-x-2">
                 <Input
                   value={inputText}
@@ -262,7 +262,7 @@ const Index = () => {
                 </Button>
               </div>
             </div>
-            
+
             <div className="mt-2 sm:mt-3 text-xs text-gray-500 text-center">
               Tap voice button or type your question • Based on {location.city}, {location.state} law
             </div>
