@@ -27,7 +27,12 @@ const Index = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [location, setLocation] = useState<string>('California');
+  interface Location {
+    city: string;
+    state: string;
+  }
+  
+  const [location, setLocation] = useState<Location>({ city: "", state: "" }); // object state
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(true);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -55,26 +60,26 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Simulate AI response with location-aware content
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      //  Await the AI response here!
+      const legalText = await getLocationSpecificResponse(text, location);
+    
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: `Based on ${location} law, here's what you need to know: ${getLocationSpecificResponse(text, location)}`,
+        text: `Based on ${location.city}, ${location.state} law, here's what you need to know:\n${legalText}`,
         isUser: false,
         timestamp: new Date()
       };
-
+    
       setMessages(prev => [...prev, aiResponse]);
-
-      // Text-to-speech for AI response
+    
+      // Optional: Text-to-speech
       if (isSpeechEnabled && 'speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(aiResponse.text);
         utterance.rate = 0.9;
         utterance.pitch = 1;
         window.speechSynthesis.speak(utterance);
       }
-
+    
     } catch (error) {
       toast({
         title: "Error",
@@ -86,16 +91,23 @@ const Index = () => {
     }
   };
 
-  const getLocationSpecificResponse = (question: string, location: string): string => {
-    const responses = {
-      'California': "In California, you have strong consumer protection rights under the California Consumer Privacy Act (CCPA) and robust tenant protections. For employment issues, California is an at-will employment state but has extensive anti-discrimination laws.",
-      'New York': "New York State provides comprehensive worker protections and tenant rights. The state has strict anti-discrimination laws and strong consumer protection measures.",
-      'Texas': "Texas follows at-will employment principles with specific state regulations. Property rights are well-defined, and the state has its own consumer protection statutes.",
-      'Florida': "Florida law provides specific protections for residents including homestead exemptions and unique property rights. Consumer protection is governed by state-specific statutes."
-    };
-
-    return responses[location as keyof typeof responses] || 
-           "I can help you understand your rights based on local and federal laws. Please provide more specific details about your situation.";
+  const getLocationSpecificResponse = async (question: string, location: Location): Promise<string> => {
+    try {
+      const response = await fetch("http://localhost:8000/legal-response", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, location }),
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) throw new Error(data.detail || "Something went wrong");
+  
+      return data.response;
+    } catch (err) {
+      console.error(err);
+      return "Sorry, we couldn't generate a legal response at this time.";
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -205,7 +217,7 @@ const Index = () => {
             </div>
             
             <div className="mt-2 sm:mt-3 text-xs text-gray-500 text-center">
-              Tap voice button or type your question • Based on {location} law
+              Tap voice button or type your question • Based on {location.city}, {location.state} law
             </div>
           </div>
         </Card>
