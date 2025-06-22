@@ -18,6 +18,8 @@ load_dotenv()
 
 api_key = os.getenv("GROQ_API_KEY")
 
+client = Groq(api_key=api_key)
+
 app = FastAPI()
 
 geolocator = Nominatim(user_agent="calhacks2025-app")
@@ -110,8 +112,6 @@ def legal_reasoning(user_input, location, city):
     "confidence": 0-1
     }}
     """
-
-    client = Groq(api_key=api_key)
     completion = client.chat.completions.create(
         model="deepseek-r1-distill-llama-70b",
         messages=[
