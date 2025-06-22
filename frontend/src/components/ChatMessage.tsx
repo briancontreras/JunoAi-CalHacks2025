@@ -13,13 +13,14 @@ interface Message {
 
 interface ChatMessageProps {
   message: Message;
+  isAudioEnabled?: boolean;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, isAudioEnabled = true }) => {
   const { speakWithGoogle, isSpeaking } = useSpeech();
 
   const handleSpeak = () => {
-    if (!message.isUser) {
+    if (!message.isUser && isAudioEnabled) {
       speakWithGoogle(message.text);
     }
   };
@@ -56,7 +57,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
               {formatTime(message.timestamp)}
             </span>
             
-            {!message.isUser && (
+            {!message.isUser && isAudioEnabled && (
               <Button
                 variant="ghost"
                 size="sm"

@@ -5,9 +5,10 @@ import { useToast } from "@/hooks/use-toast";
 
 interface VoiceInputProps {
   onTranscript: (text: string) => void;
+  onRecordingChange?: (isRecording: boolean) => void;
 }
 
-const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
+const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onRecordingChange }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
@@ -48,6 +49,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
 
       mediaRecorder.current.start();
       setIsRecording(true);
+      onRecordingChange?.(true);
 
       toast({
         title: "Recording Started",
@@ -66,6 +68,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
     if (mediaRecorder.current && isRecording) {
       mediaRecorder.current.stop();
       setIsRecording(false);
+      onRecordingChange?.(false);
     }
   };
 
