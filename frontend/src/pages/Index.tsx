@@ -27,7 +27,12 @@ const Index = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [location, setLocation] = useState<string>('California');
+  interface Location {
+    city: string;
+    state: string;
+  }
+  
+  const [location, setLocation] = useState<Location>({ city: "", state: "" }); // object state
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(true);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -60,7 +65,7 @@ const Index = () => {
       
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: `Based on ${location} law, here's what you need to know: ${getLocationSpecificResponse(text, location)}`,
+        text: `Based on ${location.city}, ${location.state} law, here's what you need to know: ${getLocationSpecificResponse(text, location)}`,
         isUser: false,
         timestamp: new Date()
       };
@@ -86,7 +91,7 @@ const Index = () => {
     }
   };
 
-  const getLocationSpecificResponse = (question: string, location: string): string => {
+  const getLocationSpecificResponse = (question: string, location: Location): string => {
     const responses = {
       'California': "In California, you have strong consumer protection rights under the California Consumer Privacy Act (CCPA) and robust tenant protections. For employment issues, California is an at-will employment state but has extensive anti-discrimination laws.",
       'New York': "New York State provides comprehensive worker protections and tenant rights. The state has strict anti-discrimination laws and strong consumer protection measures.",
@@ -94,7 +99,7 @@ const Index = () => {
       'Florida': "Florida law provides specific protections for residents including homestead exemptions and unique property rights. Consumer protection is governed by state-specific statutes."
     };
 
-    return responses[location as keyof typeof responses] || 
+    return responses[location.state as keyof typeof responses] || 
            "I can help you understand your rights based on local and federal laws. Please provide more specific details about your situation.";
   };
 
@@ -205,7 +210,7 @@ const Index = () => {
             </div>
             
             <div className="mt-2 sm:mt-3 text-xs text-gray-500 text-center">
-              Tap voice button or type your question • Based on {location} law
+              Tap voice button or type your question • Based on {location.city}, {location.state} law
             </div>
           </div>
         </Card>

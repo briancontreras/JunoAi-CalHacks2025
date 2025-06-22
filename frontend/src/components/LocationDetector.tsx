@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MapPin, ChevronDown } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
@@ -10,9 +9,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
+interface Location {
+  city: string;
+  state: string;
+}
+
 interface LocationDetectorProps {
-  onLocationChange: (location: string) => void;
-  currentLocation: string;
+  onLocationChange: (location: Location) => void;
+  currentLocation: Location;
 }
 
 const LocationDetector: React.FC<LocationDetectorProps> = ({ onLocationChange, currentLocation }) => {
@@ -20,12 +24,17 @@ const LocationDetector: React.FC<LocationDetectorProps> = ({ onLocationChange, c
   const { toast } = useToast();
 
   const states = [
-    'California', 'New York', 'Texas', 'Florida', 'Illinois', 'Pennsylvania',
-    'Ohio', 'Georgia', 'North Carolina', 'Michigan', 'New Jersey', 'Virginia',
-    'Washington', 'Arizona', 'Massachusetts', 'Tennessee', 'Indiana', 'Maryland',
-    'Missouri', 'Wisconsin', 'Colorado', 'Minnesota', 'South Carolina', 'Alabama'
+    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+    "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho",
+    "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+    "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
+    "New Hampshire", "New Jersey", "New Mexico", "New York",
+    "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon",
+    "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+    "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+    "West Virginia", "Wisconsin", "Wyoming"
   ];
-
   const detectLocation = async () => {
     setIsDetecting(true);
   
@@ -40,7 +49,6 @@ const LocationDetector: React.FC<LocationDetectorProps> = ({ onLocationChange, c
   
         const { latitude, longitude } = position.coords;
   
-        // Call your backend /location endpoint with coordinates
         const response = await fetch("http://localhost:8000/location", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -55,34 +63,37 @@ const LocationDetector: React.FC<LocationDetectorProps> = ({ onLocationChange, c
           throw new Error(data.error);
         }
   
-        // Use state or fallback to city if you want
-        const detectedLocation = data.state || data.city || "Unknown";
+        // Send city and state back as object
+        const detectedLocation = {
+          city: data.city || "Unknown City",
+          state: data.state || "Unknown State"
+        };
   
         onLocationChange(detectedLocation);
   
         toast({
           title: "Location Detected",
-          description: `Your location has been set to ${detectedLocation}`,
+          description: `Your location has been set to ${detectedLocation.city}, ${detectedLocation.state}`,
         });
       } else {
         throw new Error('Geolocation not supported');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-
+  
       toast({
         title: "Location Detection Failed",
-        description: error.message || "Please select your location manually",
+        description: message || "Please select your location manually",
         variant: "destructive"
       });
     } finally {
       setIsDetecting(false);
     }
   };
-  
 
+  // When user selects a state from dropdown, update state and clear city
   const handleStateSelect = (state: string) => {
-    onLocationChange(state);
+    onLocationChange({ city: "", state }); // city reset, state updated
     toast({
       title: "Location Updated",
       description: `Legal information will be based on ${state} law`,
@@ -93,9 +104,17 @@ const LocationDetector: React.FC<LocationDetectorProps> = ({ onLocationChange, c
     <div className="flex items-center space-x-1">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-3 touch-manipulation">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-3 touch-manipulation"
+          >
             <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="max-w-[60px] sm:max-w-none truncate">{currentLocation}</span>
+            {/* Display city and state, fallback to unknown if empty */}
+            <span className="max-w-[100px] sm:max-w-none truncate">
+              {currentLocation.city ? `${currentLocation.city}, ` : ""}
+              {currentLocation.state || "Select State"}
+            </span>
             <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -104,7 +123,7 @@ const LocationDetector: React.FC<LocationDetectorProps> = ({ onLocationChange, c
             <DropdownMenuItem
               key={state}
               onClick={() => handleStateSelect(state)}
-              className={`${currentLocation === state ? 'bg-blue-50' : ''} touch-manipulation py-3`}
+              className={`${currentLocation.state === state ? 'bg-blue-50' : ''} touch-manipulation py-3`}
             >
               {state}
             </DropdownMenuItem>
