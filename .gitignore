@@ -12,7 +12,6 @@ venv/
 env/
 backend/venv/
 
-<<<<<<< HEAD
 # Environment variables
 .env
 
@@ -27,9 +26,7 @@ Thumbs.db
 #groq testing
 test.py
 # Python egg info
-=======
 # Python packaging
->>>>>>> 4d6bb63dc93a9b3ced9c99aa413413acb15367e4
 *.egg-info/
 dist/
 build/
