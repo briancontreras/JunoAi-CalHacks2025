@@ -41,6 +41,55 @@ const Index = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+    // Add this useEffect to detect location on component mount
+  useEffect(() => {
+    const autoDetectLocation = async () => {
+      if ('geolocation' in navigator) {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              timeout: 10000,
+              enableHighAccuracy: true
+            });
+          });
+
+          const { latitude, longitude } = position.coords;
+
+          const response = await fetch("http://localhost:8000/location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: latitude, lon: longitude }),
+          });
+
+          if (!response.ok) throw new Error("Failed to get location from server");
+
+          const data = await response.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          const detectedLocation = {
+            city: data.city || "Unknown City",
+            state: data.state || "Unknown State"
+          };
+
+          setLocation(detectedLocation);
+
+          toast({
+            title: "Location Detected",
+            description: `Your location has been set to ${detectedLocation.city}, ${detectedLocation.state}`,
+          });
+        } catch (error) {
+          console.log("Auto-location detection failed:", error);
+          // Don't show error toast for auto-detection failure
+        }
+      }
+    };
+
+    autoDetectLocation();
+  }, [toast]); // Empty dependency array means this runs once on mount
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
