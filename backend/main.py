@@ -175,3 +175,46 @@ def legal_reasoning(user_input, location, city):
 
     for chunk in completion:
         print(chunk.choices[0].delta.content or "", end="")
+
+class LegalRequest(BaseModel):
+    question: str
+    location: dict  # could be {"city": "...", "state": "..."}
+
+@app.post("/legal-response")
+async def legal_response(request: LegalRequest):
+    # Step 1: Get the reasoning output
+    reasoning_prompt = f"""
+You are a legal assistant AI. A user from {request.location['city']}, {request.location['state']} asked the following:
+
+"{request.question}"
+
+Provide a helpful, accurate, and concise answer based on U.S. federal law and relevant {request.location['state']} law. Make sure the response is clear and accessible to non-lawyers.
+"""
+
+    reasoning_completion = client.chat.completions.create(
+        model="deepseek-r1-distill-llama-70b",
+        messages=[{"role": "user", "content": reasoning_prompt}],
+        temperature=0.3,
+        max_tokens=512
+    )
+    content = reasoning_completion.choices[0].message.content
+    reasoning_text = content.strip() if content else ""
+
+    # Step 2: Use reasoning output as input to text generation to humanize
+    generation_prompt = f"""
+You are a friendly legal assistant. Here is the factual legal explanation:
+
+{reasoning_text}
+
+Please rewrite the above explanation in a clear, conversational, empathetic tone, easy for any non-expert to understand. Keep it concise but warm.
+"""
+
+    generation_completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": generation_prompt}],
+        temperature=0.7,
+        max_tokens=512
+    )
+    content = generation_completion.choices[0].message.content
+    humanized_response = content.strip() if content else ""
+    return {"response": humanized_response}
